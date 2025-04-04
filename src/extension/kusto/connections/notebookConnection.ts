@@ -151,11 +151,8 @@ export function getConnectionInfoFromDocumentMetadata(
     document: NotebookDocument | TextDocument,
     ignoreCache = false
 ): Partial<IConnectionInfo> | undefined {
+    let connection: IConnectionInfo | undefined;
     // If user manually chose a connection, then use that.
-    let connection = getFromGlobalCache<IConnectionInfo>(document.uri.toString().toLowerCase());
-    if (connection) {
-        return connection;
-    }
     let notebook: NotebookDocument | undefined;
     if ('notebookType' in document) {
         notebook = document;
@@ -168,7 +165,8 @@ export function getConnectionInfoFromDocumentMetadata(
         } else {
             connection = getConnectionFromNotebookMetadata(notebook);
         }
-    } else {
+    }
+    if (!connection) {
         connection = getFromGlobalCache<IConnectionInfo>(document.uri.toString().toLowerCase());
     }
     if (connection && !getFromGlobalCache(GlobalMementoKeys.lastUsedConnection)) {
