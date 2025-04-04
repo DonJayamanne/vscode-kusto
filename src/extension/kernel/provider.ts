@@ -12,18 +12,21 @@ import {
 } from 'vscode';
 import { Client } from '../kusto/client';
 import { getChartType } from '../output/chart';
-import { createPromiseFromToken, InteractiveWindowView, registerDisposable } from '../utils';
+import { createPromiseFromToken, InteractiveWindowView, isKustoNotebook, registerDisposable } from '../utils';
 import { encodeConnectionInfo, getDisplayInfo, IConnectionInfo } from '../kusto/connections/types';
-import { getLastUsedConnections } from './usedConnections';
+import { getLastUsedControllerConnections } from './usedConnections';
 import { updateNotebookConnection } from '../kusto/connections/notebookConnection';
 import { VariableProvider } from './variables';
+import { onConnectionChanged } from '../kusto/connections/storage';
+import { updateGlobalCache } from '../cache';
+import { GlobalMementoKeys } from '../constants';
 
 const registeredControllers: KernelPerConnection[] = [];
 const variableProvider = new VariableProvider();
 export class KernelProvider {
     public static register() {
         registerDisposable(variableProvider);
-        const lastUsedConnection = getLastUsedConnections();
+        const lastUsedConnection = getLastUsedControllerConnections();
         lastUsedConnection.forEach((connection) => {
             registerDisposable(registerController('kusto-notebook', connection));
             registerDisposable(registerController('kusto-notebook-kql', connection));
@@ -31,6 +34,21 @@ export class KernelProvider {
         });
     }
 }
+
+onConnectionChanged(({ connection, change }) => {
+    if (change === 'added') {
+        return;
+    }
+    for (const controllerToRemove of registeredControllers.filter(
+        (controller) => controller.connection.id === connection.id
+    )) {
+        controllerToRemove.dispose();
+        const index = registeredControllers.indexOf(controllerToRemove);
+        if (index !== -1) {
+            registeredControllers.splice(index, 1);
+        }
+    }
+});
 
 export function registerController(notebookType: string, connection: IConnectionInfo) {
     const controllerId = getControllerId(connection, notebookType);
@@ -55,7 +73,7 @@ function getControllerId(connection: IConnectionInfo, notebookType: string) {
 export class KernelPerConnection extends Disposable {
     public readonly notebookController: NotebookController;
     private readonly disposables: Disposable[] = [];
-    constructor(notebookType: string, private readonly connection: IConnectionInfo) {
+    constructor(notebookType: string, public readonly connection: Readonly<IConnectionInfo>) {
         super(() => {
             this.dispose();
         });
@@ -71,17 +89,26 @@ export class KernelPerConnection extends Disposable {
         this.notebookController.description = displayInfo.description;
         this.notebookController.variableProvider = variableProvider;
         this.disposables.push(
-            this.notebookController.onDidChangeSelectedNotebooks(({ notebook, selected }) => {
+            this.notebookController.onDidChangeSelectedNotebooks(async ({ notebook, selected }) => {
                 if (!selected) {
                     return;
                 }
-                updateNotebookConnection(notebook, this.connection);
+                if (isKustoNotebook(notebook)) {
+                    await updateNotebookConnection(notebook, this.connection);
+                    if (notebook.notebookType === 'kusto-notebook-kql') {
+                        await updateGlobalCache(notebook.uri.toString().toLowerCase(), this.connection);
+                    }
+                } else {
+                    await updateGlobalCache(notebook.uri.toString().toLowerCase(), this.connection);
+                }
+                await updateGlobalCache(GlobalMementoKeys.lastUsedConnection, connection);
             })
         );
     }
 
     dispose() {
         this.disposables.forEach((disposable) => disposable.dispose());
+        this.notebookController.dispose();
     }
 
     public executeInteractive(cells: NotebookCell[], textDocument: TextDocument) {

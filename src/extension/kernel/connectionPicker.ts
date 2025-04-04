@@ -1,6 +1,6 @@
 import { NotebookDocument, notebooks, NotebookCell, NotebookController, Disposable, commands, window } from 'vscode';
 import { ensureNotebookHasConnectionInfoInternal } from '../kusto/connections/notebookConnection';
-import { updateLastUsedConnections } from './usedConnections';
+import { updateLastUsedControllerConnections } from './usedConnections';
 import { registerController } from './provider';
 import { InteractiveWindowView, registerDisposable } from '../utils';
 import { IConnectionInfo } from '../kusto/connections/types';
@@ -74,7 +74,7 @@ export async function selectConnectionController(notebook: NotebookDocument, con
     if (window.activeNotebookEditor?.notebook === notebook) {
         commandArgs['notebookEditor'] = window.activeNotebookEditor;
     }
-    updateLastUsedConnections(connection);
+    updateLastUsedControllerConnections(connection);
     const result = await commands.executeCommand('notebook.selectKernel', commandArgs);
     console.log('Kernel selected', result);
 }

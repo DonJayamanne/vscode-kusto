@@ -1,6 +1,15 @@
 /* eslint-disable , @typescript-eslint/no-explicit-any, @typescript-eslint/no-extraneous-class */
 
-import { Disposable, QuickInput, QuickInputButton, QuickInputButtons, QuickPickItem, window } from 'vscode';
+import {
+    Disposable,
+    QuickInput,
+    QuickInputButton,
+    QuickInputButtons,
+    QuickPick,
+    QuickPickItem,
+    QuickPickItemButtonEvent,
+    window
+} from 'vscode';
 
 // Borrowed from https://github.com/Microsoft/vscode-extension-samples/blob/master/quickinput-sample/src/multiStepInput.ts
 // Why re-invent the wheel :)
@@ -29,6 +38,7 @@ export interface IQuickPickParameters<T extends QuickPickItem> {
     matchOnDetail?: boolean;
     acceptFilterBoxTextAsSelection?: boolean;
     shouldResume?(): Promise<boolean>;
+    onDidTriggerItemButton?(e: QuickPickItemButtonEvent<T>, input: QuickPick<T>): void;
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -85,6 +95,7 @@ export class MultiStepInput<S> implements IMultiStepInput<S> {
         activeItem,
         placeholder,
         buttons,
+        onDidTriggerItemButton,
         shouldResume,
         matchOnDescription,
         matchOnDetail,
@@ -109,6 +120,11 @@ export class MultiStepInput<S> implements IMultiStepInput<S> {
                 }
                 input.buttons = [...(this.steps.length > 1 ? [QuickInputButtons.Back] : []), ...(buttons || [])];
                 disposables.push(
+                    input.onDidTriggerItemButton((item) => {
+                        if (onDidTriggerItemButton) {
+                            onDidTriggerItemButton(item, input);
+                        }
+                    }),
                     input.onDidTriggerButton((item) => {
                         if (item === QuickInputButtons.Back) {
                             reject(InputFlowAction.back);

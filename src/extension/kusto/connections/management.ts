@@ -2,10 +2,11 @@ import { QuickInputButtons, QuickPickItem, ThemeIcon } from 'vscode';
 import { ReadWrite } from '../../types';
 import { create, InputFlowAction, MultiStepInput } from './multiStepInput';
 import { AppInsightsConnectionSecrets, IConnectionInfo } from './types';
-import { getCachedConnections } from './storage';
+import { getCachedConnections, updateConnectionCache } from './storage';
 import { AzureAuthenticatedConnection } from './azAuth';
 import { AppInsightsConnection } from './appInsights';
 import { fromConnectionInfo } from '.';
+import { createDeferred } from '../../utils';
 
 /**
  * These steps still need to be polished.
@@ -60,27 +61,49 @@ async function selectConnection(multiStepInput: MultiStepInput<State>, state: St
         state.canGoBackFromAddStep = false;
         return addConnection(multiStepInput, state);
     }
-    const quickPickItems: (QuickPickItem & { connection: IConnectionInfo })[] = connections.map((item) => ({
-        label: item.displayName,
-        description: 'cluster' in item ? item.cluster : '',
-        connection: item
-    }));
-    const selection = await multiStepInput.showQuickPick({
-        title: 'Select a connection',
-        matchOnDescription: true,
-        matchOnDetail: true,
-        canGoBack: false,
-        items: quickPickItems,
-        buttons: [
-            {
-                iconPath: new ThemeIcon('add'),
-                tooltip: 'Add Connection'
-            }
-        ],
-        placeholder: ''
-    });
+    const buildQuickPickItems = () => {
+        const connections = getCachedConnections();
+        const quickPickItems: (QuickPickItem & { connection: IConnectionInfo })[] = connections.map((item) => ({
+            label: item.displayName,
+            description: 'cluster' in item ? item.cluster : '',
+            connection: item,
+            buttons: [{ iconPath: new ThemeIcon('trash'), tooltip: 'Delete Connection' }]
+        }));
+        return quickPickItems;
+    };
 
-    if ('iconPath' in selection) {
+    const deletedPromise = createDeferred<undefined>();
+    const selection = await Promise.race([
+        deletedPromise.promise,
+        multiStepInput.showQuickPick({
+            title: 'Select a connection',
+            matchOnDescription: true,
+            matchOnDetail: true,
+            canGoBack: false,
+            items: buildQuickPickItems(),
+            buttons: [
+                {
+                    iconPath: new ThemeIcon('add'),
+                    tooltip: 'Add Connection'
+                }
+            ],
+            placeholder: '',
+            onDidTriggerItemButton: async (e, quickPick) => {
+                if (e.button.tooltip === 'Delete Connection') {
+                    const connection = (e.item as unknown as QuickPickItem & { connection: IConnectionInfo }).connection;
+                    if (connection === undefined) {
+                        return;
+                    }
+                    await updateConnectionCache({ info: connection, action: 'remove' });
+                    quickPick.items = buildQuickPickItems();
+                    // deletedPromise.resolve();
+                }
+            }
+        })
+    ]);
+    if (!selection) {
+        state.dismissed = true;
+    } else if ('iconPath' in selection) {
         // Add a new cluster.
         return addConnection(multiStepInput, state);
     } else if ('description' in selection) {
