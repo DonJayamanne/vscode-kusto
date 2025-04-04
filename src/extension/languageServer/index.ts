@@ -18,6 +18,7 @@ import {
     createDeferred,
     InteractiveInputScheme,
     InteractiveScheme,
+    isInteractiveWindow,
     isJupyterNotebook,
     isKustoNotebook,
     NotebookCellScheme
@@ -140,11 +141,15 @@ const lastSentConnectionForDocument = new WeakMap<NotebookDocument | TextDocumen
 const pendingSchemas = new Map<NotebookDocument | TextDocument, EngineSchema>();
 async function sendSchemaForDocument(document: NotebookDocument | TextDocument) {
     const notebook = getNotebookDocument(document);
-    if (notebook && !isKustoNotebook(notebook) && !isJupyterNotebook(notebook)) {
+    if (notebook && !isKustoNotebook(notebook) && !isJupyterNotebook(notebook) && !isInteractiveWindow(notebook)) {
         return;
     }
     // If this is a cell in a notebook, get the notebook object,
-    if (isNotebookCell(document) && notebook && (isJupyterNotebook(notebook) || isKustoNotebook(notebook))) {
+    if (
+        isNotebookCell(document) &&
+        notebook &&
+        (isJupyterNotebook(notebook) || isKustoNotebook(notebook) || isInteractiveWindow(notebook))
+    ) {
         document = notebook;
     }
     // If not a notebook, then its a text document
