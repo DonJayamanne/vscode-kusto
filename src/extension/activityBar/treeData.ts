@@ -2,10 +2,27 @@ import { Event, EventEmitter, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCol
 import { fromConnectionInfo } from '../kusto/connections';
 import { getCachedConnections } from '../kusto/connections/storage';
 import { IConnectionInfo } from '../kusto/connections/types';
-import { Column, Database, EngineSchema, Table } from '../kusto/schema';
+import {
+    Function as KustoFunction,
+    Column,
+    Database,
+    EngineSchema,
+    Table,
+    InputParameter,
+    TableEntityType
+} from '../kusto/schema';
 import { DeepReadonly, IDisposable } from '../types';
+import { AzureAuthenticatedConnection } from '../kusto/connections/azAuth';
 
-export type NodeType = 'cluster' | 'database' | 'table' | 'column';
+export type NodeType =
+    | 'cluster'
+    | 'database'
+    | 'table'
+    | 'tables'
+    | 'column'
+    | 'functions'
+    | 'function'
+    | 'inputParameter';
 export interface ITreeData {
     readonly parent?: ITreeData;
     readonly type: NodeType;
@@ -23,6 +40,14 @@ export class ClusterNode implements ITreeData {
     public async getTreeItem(): Promise<TreeItem> {
         const item = new TreeItem(this.info.displayName, TreeItemCollapsibleState.Expanded);
         item.iconPath = new ThemeIcon('server-environment');
+        try {
+            const connection = fromConnectionInfo(this.info);
+            if (connection instanceof AzureAuthenticatedConnection) {
+                item.tooltip = connection.info.cluster;
+            }
+        } catch {
+            //
+        }
         item.contextValue = this.type;
         if (!this.engineSchema) {
             item.iconPath = new ThemeIcon('error');
@@ -34,7 +59,9 @@ export class ClusterNode implements ITreeData {
         if (!this.engineSchema) {
             return [];
         }
-        return this.engineSchema.cluster.databases.map((item) => new DatabaseNode(this, item.name));
+        return this.engineSchema.cluster.databases
+            .map((item) => new DatabaseNode(this, item.name))
+            .sort((a, b) => a.database.name.localeCompare(b.database.name));
     }
     public async updateSchema(schema?: EngineSchema) {
         this.engineSchema = schema;
@@ -50,13 +77,85 @@ export class DatabaseNode implements ITreeData {
     }
     constructor(public readonly parent: ClusterNode, private readonly databaseName: string) {}
     public async getTreeItem(): Promise<TreeItem> {
-        const item = new TreeItem(this.databaseName, TreeItemCollapsibleState.Collapsed);
+        const item = new TreeItem(this.database.name, TreeItemCollapsibleState.Collapsed);
         item.contextValue = this.type;
         item.iconPath = new ThemeIcon('database');
         return item;
     }
     public async getChildren(): Promise<ITreeData[]> {
-        return this.database.tables.map((table) => new TableNode(this, table.name));
+        const tables = this.database.tables
+            .filter((table) => !table.entityType || table.entityType === 'Table')
+            .map((table) => new TableNode(this, table.name))
+            .sort((a, b) => a.table.name.localeCompare(b.table.name));
+        const materializedViews = this.database.tables.some(
+            (table) => !table.entityType || table.entityType === 'MaterializedViewTable'
+        )
+            ? [new TablesNode(this, 'Materialized Views', 'MaterializedViewTable')]
+            : [];
+        const externalTables = this.database.tables.some(
+            (table) => !table.entityType || table.entityType === 'ExternalTable'
+        )
+            ? [new TablesNode(this, 'External Tables', 'ExternalTable')]
+            : [];
+        const functions = this.database.functions.length > 0 ? [new FunctionsNode(this)] : [];
+        const nodes = [...functions, ...externalTables, ...materializedViews];
+        if (nodes.length === 0) {
+            return tables;
+        } else {
+            return nodes.concat([new TablesNode(this, 'Tables', 'Table')]);
+        }
+    }
+}
+export class TablesNode implements ITreeData {
+    public readonly type: NodeType = 'tables';
+    public get tables(): DeepReadonly<Table[]> {
+        return this.parent.database.tables.filter((item) => (item.entityType || 'Table') === this.entityType);
+    }
+    constructor(
+        public readonly parent: DatabaseNode,
+        private readonly label: string = 'Table',
+        private readonly entityType: TableEntityType
+    ) {}
+    public async getTreeItem(): Promise<TreeItem> {
+        const item = new TreeItem(this.label, TreeItemCollapsibleState.Collapsed);
+        item.contextValue = this.type;
+        item.iconPath = new ThemeIcon('library');
+        return item;
+    }
+    public async getChildren() {
+        const folders = Array.from(
+            new Set<string>(this.tables.map((item) => item.folder || '').filter((item) => !!item))
+        ).sort();
+        const folderNodes = folders.map((folder) => new TablesFolderNode(this.parent, folder, this.entityType));
+        const tableNodes = this.tables
+            .filter((item) => !item.folder)
+            .map((item) => new TableNode(this.parent, item.name))
+            .sort((a, b) => a.table.name.localeCompare(b.table.name));
+        return [...folderNodes, ...tableNodes];
+    }
+}
+export class TablesFolderNode implements ITreeData {
+    public readonly type: NodeType = 'tables';
+    public get tables(): DeepReadonly<Table[]> {
+        return this.parent.database.tables.filter(
+            (item) => (item.entityType || 'Table') === this.entityType && (item.folder || '') === this.folder
+        );
+    }
+    constructor(
+        public readonly parent: DatabaseNode,
+        private readonly folder: string,
+        private readonly entityType: TableEntityType = 'Table'
+    ) {}
+    public async getTreeItem(): Promise<TreeItem> {
+        const item = new TreeItem(this.folder, TreeItemCollapsibleState.Collapsed);
+        item.contextValue = this.type;
+        item.iconPath = new ThemeIcon('folder');
+        return item;
+    }
+    public async getChildren() {
+        return this.tables
+            .map((item) => new TableNode(this.parent, item.name))
+            .sort((a, b) => a.table.name.localeCompare(b.table.name));
     }
 }
 export class TableNode implements ITreeData {
@@ -73,8 +172,13 @@ export class TableNode implements ITreeData {
         const table = this.table;
         const item = new TreeItem(this.tableName, TreeItemCollapsibleState.Collapsed);
         item.contextValue = this.type;
-        item.description = table.entityType ? `(${table.entityType})` : '';
-        item.tooltip = table.docstring;
+        const struct = `\n${table.name}: (${table.columns.map((c) => c.name).join(', ')})`;
+        item.tooltip = [table.docstring, struct]
+            .filter((item) => !!item)
+            .join('\n')
+            .trim();
+        item.description =
+            table.entityType && table.entityType.toLowerCase() !== 'table' ? `(${table.entityType})` : '';
         item.iconPath = new ThemeIcon('table');
         return item;
     }
@@ -95,8 +199,119 @@ export class ColumnNode implements ITreeData {
         item.contextValue = this.type;
         item.description = `(${col.type})`;
         item.tooltip = col.docstring;
-        item.iconPath = new ThemeIcon('output-view-icon');
+        item.iconPath = getCslTypeIcon(col.type || '');
         return item;
+    }
+}
+export class FunctionsNode implements ITreeData {
+    public readonly type: NodeType = 'functions';
+    public get functions(): DeepReadonly<KustoFunction[]> {
+        return this.parent.database.functions;
+    }
+    constructor(public readonly parent: DatabaseNode) {}
+    public async getTreeItem(): Promise<TreeItem> {
+        const item = new TreeItem('Functions', TreeItemCollapsibleState.Collapsed);
+        item.contextValue = this.type;
+        item.iconPath = new ThemeIcon('symbol-method-arrow');
+        return item;
+    }
+    public async getChildren() {
+        const folders = Array.from(
+            new Set<string>(this.functions.map((item) => item.folder || '').filter((item) => !!item))
+        ).sort();
+        const folderNodes = folders.map((folder) => new FunctionsFolderNode(this.parent, folder));
+        const functionNodes = this.functions
+            .filter((item) => !item.folder)
+            .map((item) => new FunctionNode(this.parent, item.name))
+            .sort((a, b) => a.function.name.localeCompare(b.function.name));
+        return [...folderNodes, ...functionNodes];
+    }
+}
+export class FunctionsFolderNode implements ITreeData {
+    public readonly type: NodeType = 'functions';
+    public get functions(): DeepReadonly<KustoFunction[]> {
+        return this.parent.database.functions.filter((item) => (item.folder || '') === this.folder);
+    }
+    constructor(public readonly parent: DatabaseNode, private readonly folder: string) {}
+    public async getTreeItem(): Promise<TreeItem> {
+        const item = new TreeItem(this.folder, TreeItemCollapsibleState.Collapsed);
+        item.contextValue = this.type;
+        item.iconPath = new ThemeIcon('folder');
+        return item;
+    }
+    public async getChildren() {
+        return this.functions
+            .map((arg) => new FunctionNode(this.parent, arg.name))
+            .sort((a, b) => a.function.name.localeCompare(b.function.name));
+    }
+}
+
+export class FunctionNode implements ITreeData {
+    public readonly type: NodeType = 'function';
+    public get function(): DeepReadonly<KustoFunction> {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        return this.parent.database.functions.find(
+            (item) => item.name.toLowerCase() === this.functionName.toLowerCase()
+        )!;
+    }
+    constructor(public readonly parent: DatabaseNode, private readonly functionName: string) {}
+    public async getTreeItem(): Promise<TreeItem> {
+        const item = new TreeItem(this.functionName, TreeItemCollapsibleState.Collapsed);
+        item.contextValue = this.type;
+        const args = this.function.inputParameters.length
+            ? `(${this.function.inputParameters.map((param) => param.name).join(', ')})`
+            : '';
+        item.description = args;
+        const struct = `\n${this.function.name}${args}`;
+        item.tooltip = [this.function.docstring, struct]
+            .filter((item) => !!item)
+            .join('\n')
+            .trim();
+        item.iconPath = new ThemeIcon('symbol-method');
+        return item;
+    }
+    public async getChildren() {
+        return this.function.inputParameters.map((arg) => new InputParameterNode(this, arg.name));
+    }
+}
+export class InputParameterNode implements ITreeData {
+    public readonly type: NodeType = 'inputParameter';
+    public get inputParameter(): DeepReadonly<InputParameter> {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        return this.parent.function.inputParameters.find(
+            (param) => param.name.toLowerCase() === this.inputParameterName.toLowerCase()
+        )!;
+    }
+    constructor(public readonly parent: FunctionNode, private readonly inputParameterName: string) {}
+    public async getTreeItem(): Promise<TreeItem> {
+        const param = this.inputParameter;
+        const item = new TreeItem(this.inputParameterName, TreeItemCollapsibleState.None);
+        item.contextValue = this.type;
+        item.description = param.cslType || param.type ? `(${param.cslType || param.type})` : '';
+        item.tooltip = param.docstring;
+        item.iconPath = getCslTypeIcon(param.cslType || param.type || '');
+        return item;
+    }
+}
+function getCslTypeIcon(cslType: string): ThemeIcon {
+    switch (cslType) {
+        case 'datetime':
+        case 'datetimeoffset':
+        case 'timespan':
+            return new ThemeIcon('history');
+        case 'guid':
+            return new ThemeIcon('symbol-constant');
+        case 'int':
+        case 'long':
+        case 'real':
+            return new ThemeIcon('symbol-numeric');
+        case 'bool':
+        case 'boolean':
+            return new ThemeIcon('symbol-boolean');
+        case 'string':
+            return new ThemeIcon('symbol-string');
+        default:
+            return new ThemeIcon('symbol-parameter');
     }
 }
 export class KustoClusterExplorer implements TreeDataProvider<ITreeData>, IDisposable {

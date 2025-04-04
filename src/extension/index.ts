@@ -2,9 +2,8 @@ import { ContentProvider } from './content/provider';
 import { initialize as initializeConstants } from './constants';
 import { KernelProvider } from './kernel/provider';
 import { registerDisposableRegistry } from './utils';
-import { LanguageClient } from 'vscode-languageclient/node';
 import { ExtensionContext } from 'vscode';
-import { initializeCache } from './cache';
+import { initializeGlobalCache } from './cache';
 import { ClusterTreeView } from './activityBar/clusterView';
 import { registerNotebookConnection } from './kusto/connections/notebookConnection';
 import { initialize as initializeLanguageService } from './languageServer';
@@ -20,11 +19,13 @@ import { registerConnection } from './kusto/connections/baseConnection';
 import { AppInsightsConnection } from './kusto/connections/appInsights';
 import { CellCodeLensProvider } from './interactive/cells';
 import { KqlContentProvider } from './content/kqlProvider';
-
-let client: LanguageClient;
+import { registerKernelPicker } from './kernel/connectionPicker';
+import { regsiterSchemaTool } from './llm/schemaTool';
+import { registerKqlNotebookConnectionHandler } from './content/kqlConnection';
 
 export async function activate(context: ExtensionContext) {
-    initializeCache(context.globalState);
+    registerDisposableRegistry(context);
+    initializeGlobalCache(context.globalState, context.workspaceState);
     initializeConstants(context.extension.packageJSON.enableProposedApi); // In browser context dont use proposed API, try to always use stable stuff...
     initializeLanguageService(context);
     initializeConnectionStorage(context);
@@ -36,23 +37,18 @@ export async function activate(context: ExtensionContext) {
     );
     AzureAuthenticatedConnection.registerKustoClient(KustoClient);
     AppInsightsConnection.registerKustoClient(KustoClient);
-    KernelProvider.register(context);
-    StatusBarProvider.register(context);
-    registerDisposableRegistry(context);
+    KernelProvider.register();
+    StatusBarProvider.register();
     ContentProvider.register();
     KqlContentProvider.register();
     ClusterTreeView.register();
+    registerKqlNotebookConnectionHandler();
     registerNotebookConnection();
-    registerConfigurationListener(context);
+    registerConfigurationListener();
     monitorJupyterCells();
     registerInteractiveExperience();
     registerExportCommand();
+    registerKernelPicker();
     CellCodeLensProvider.register();
-}
-
-export async function deactivate(): Promise<void> {
-    if (!client) {
-        return;
-    }
-    return client.stop();
+    regsiterSchemaTool();
 }

@@ -22,6 +22,30 @@ export type AppInsightsConnectionSecrets = {
 export type ConnectionType = 'appInsights' | 'azAuth';
 export type IConnectionInfo = AzureAuthenticatedConnectionInfo | AppInsightsConnectionInfo;
 
+export function encodeConnectionInfo(info: IConnectionInfo): string {
+    return Buffer.from(JSON.stringify(info, Object.keys(info).sort())).toString('base64');
+}
+
+export function decodeConnectionInfo(info: string): IConnectionInfo {
+    const decoded = JSON.parse(Buffer.from(info, 'base64').toString('utf8'));
+    // Ensure the properties are sorted.
+    const encoded = encodeConnectionInfo(decoded);
+    return JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+}
+
+export function getDisplayInfo(info: IConnectionInfo): { label: string; description: string } {
+    if (info.type === 'appInsights') {
+        return {
+            label: `Kusto ${info.displayName || info.id}`,
+            description: ``
+        };
+    }
+    const database = info.database ? `(${info.database})` : '';
+    return {
+        label: `Kusto ${info.displayName || info.id} ${database}`,
+        description: info.cluster
+    };
+}
 export interface IConnection<T extends IConnectionInfo> {
     readonly info: T;
     getSchema(options?: { ignoreCache?: boolean; hideProgress?: boolean }): Promise<EngineSchema>;

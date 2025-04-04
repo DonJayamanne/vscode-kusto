@@ -1,5 +1,5 @@
 import { EventEmitter, ExtensionContext, Memento, SecretStorage } from 'vscode';
-import { getFromCache, updateCache } from '../../cache';
+import { getFromGlobalCache, updateGlobalCache } from '../../cache';
 import { GlobalMementoKeys, noop } from '../../constants';
 import { registerDisposable } from '../../utils';
 import { AzureAuthenticatedConnection } from './azAuth';
@@ -7,28 +7,28 @@ import { IConnectionInfo } from './types';
 
 let secretStorage: SecretStorage;
 let memento: Memento;
-const cachedKustoConnectionsKey = 'CACHED_KUSTO-CONNECTIONS';
+const cachedKustoConnectionsKey = 'CACHED_KUSTO-CONNECTIONS.1';
 
 const onDidChangeConnection = new EventEmitter<{ connection: IConnectionInfo; change: 'added' | 'removed' }>();
 
 async function migrateCachedConnections() {
-    const clusters: string[] = getFromCache<string[]>(GlobalMementoKeys.clusterUris) || [];
+    const clusters: string[] = getFromGlobalCache<string[]>(GlobalMementoKeys.clusterUris) || [];
     const cachedConnections = getCachedConnections();
     if (cachedConnections.length > 0 && clusters.length) {
-        await updateCache(GlobalMementoKeys.clusterUris, undefined);
+        await updateGlobalCache(GlobalMementoKeys.clusterUris, undefined);
         return;
     }
     if (cachedConnections.length === 0 && clusters.length) {
         const connectionsToCache = clusters.map((cluster) => AzureAuthenticatedConnection.from({ cluster }));
         await memento.update(cachedKustoConnectionsKey, connectionsToCache);
-        await updateCache(GlobalMementoKeys.clusterUris, undefined);
+        await updateGlobalCache(GlobalMementoKeys.clusterUris, undefined);
         return;
     }
 }
 export async function initializeConnectionStorage(context: ExtensionContext) {
     secretStorage = context.secrets;
     memento = context.globalState;
-    context.subscriptions.push(onDidChangeConnection);
+    registerDisposable(onDidChangeConnection);
     await migrateCachedConnections();
 }
 

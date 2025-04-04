@@ -14,12 +14,15 @@ import { initializeConnectionStorage } from './kusto/connections/storage';
 import { registerNotebookConnection } from './kusto/connections/notebookConnection';
 import { registerExportCommand } from './content/export';
 import { BrowserLanguageCapabilityProvider } from './languageServer/browser';
-import { initializeCache } from './cache';
+import { initializeGlobalCache } from './cache';
 import { registerConfigurationListener } from './configuration';
 import { KqlContentProvider } from './content/kqlProvider';
 import { CellCodeLensProvider } from './interactive/cells';
+import { registerDisposableRegistry } from './utils';
+import { registerKqlNotebookConnectionHandler } from './content/kqlConnection';
 export async function activate(context: ExtensionContext) {
-    initializeCache(context.globalState);
+    registerDisposableRegistry(context);
+    initializeGlobalCache(context.globalState, context.workspaceState);
     initializeConstants(false); // In browser context dont use proposed API, try to always use stable stuff...
     initializeLanguageService(context);
     initializeConnectionStorage(context);
@@ -31,12 +34,13 @@ export async function activate(context: ExtensionContext) {
     );
     AzureAuthenticatedConnection.registerKustoClient(KustoClient);
     AppInsightsConnection.registerKustoClient(KustoClient);
-    KernelProvider.register(context);
+    KernelProvider.register();
     ContentProvider.register();
     KqlContentProvider.register();
     ClusterTreeView.register();
+    registerKqlNotebookConnectionHandler();
     registerNotebookConnection();
-    registerConfigurationListener(context);
+    registerConfigurationListener();
     // monitorJupyterCells();
     registerExportCommand();
     BrowserLanguageCapabilityProvider.register();

@@ -27,7 +27,10 @@ export class Client implements IDisposable {
     public static async remove(document: NotebookDocument) {
         clientMap.delete(document);
     }
-    public static async create(document: NotebookDocument | TextDocument): Promise<Client | undefined> {
+    public static async create(
+        document: NotebookDocument | TextDocument,
+        connectionInfo?: IConnectionInfo
+    ): Promise<Client | undefined> {
         const client = clientMap.get(document);
         if (client) {
             return client;
@@ -36,7 +39,7 @@ export class Client implements IDisposable {
         // eslint-disable-next-line no-async-promise-executor
         const promise = new Promise<Client | undefined>(async (resolve) => {
             try {
-                const connectionInfo = await ensureDocumentHasConnectionInfo(document);
+                connectionInfo = connectionInfo || (await ensureDocumentHasConnectionInfo(document));
                 if (!connectionInfo) {
                     return resolve(undefined);
                 }

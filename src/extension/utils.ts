@@ -162,3 +162,7 @@ export function getKustoNotebook(textDocument: TextDocument) {
         (nb) => isKustoNotebook(nb) && nb.getCells().some((c) => c.document === textDocument)
     );
 }
+
+export function isNotebookDocument(document: NotebookDocument | TextDocument): document is NotebookDocument {
+    return 'notebookType' in document;
+}

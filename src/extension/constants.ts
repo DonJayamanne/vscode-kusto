@@ -4,13 +4,13 @@ import { commands } from 'vscode';
 export const noop = () => {};
 
 export enum GlobalMementoKeys {
-    clusterUris = 'clusterUris',
-    lastUsedConnection = 'lastUsedConnection',
-    lastEnteredClusterUri = 'lastEnteredClusterUri',
-    lastEnteredDatabase = 'lastEnteredDatabase',
-    prefixForClusterSchema = 'prefixForClusterSchema',
-    prefixForDatabasesInACluster = 'prefixForDatabasesInACluster',
-    prefixForTablesInAClusterDB = 'prefixForTablesInAClusterDB'
+    clusterUris = 'clusterUris.12',
+    lastUsedConnection = 'lastUsedConnection.12',
+    lastEnteredClusterUri = 'lastEnteredClusterUri.12',
+    lastEnteredDatabase = 'lastEnteredDatabase.12',
+    prefixForClusterSchema = 'prefixForClusterSchema.12',
+    prefixForDatabasesInACluster = 'prefixForDatabasesInACluster.12',
+    prefixForTablesInAClusterDB = 'prefixForTablesInAClusterDB.12'
 }
 
 let _useProposedApi = false;

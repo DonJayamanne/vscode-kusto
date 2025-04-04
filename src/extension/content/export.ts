@@ -1,7 +1,7 @@
 import { commands, NotebookCell, NotebookCellKind, Uri, window, workspace } from 'vscode';
 import { isKustoNotebook, registerDisposable } from '../utils';
 import { getConnectionInfoFromDocumentMetadata } from '../kusto/connections/notebookConnection';
-import { updateCache } from '../cache';
+import { updateGlobalCache } from '../cache';
 import { ICodeCell, IMarkdownCell, INotebookContent } from './jupyter';
 export function registerExportCommand() {
     registerDisposable(commands.registerCommand('kusto.exportNotebookAsScript', exportNotebook));
@@ -86,7 +86,7 @@ async function exportNotebook(uri?: Uri) {
     }
     // Ensure the connection information is updated, so that its upto date if/when its opened in VS Code.
     const updateConnectionPromise = connection
-        ? updateCache(target.toString().toLowerCase(), connection)
+        ? updateGlobalCache(target.toString().toLowerCase(), connection)
         : Promise.resolve();
     await Promise.all([workspace.fs.writeFile(target, new TextEncoder().encode(script)), updateConnectionPromise]);
 }

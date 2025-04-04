@@ -1,7 +1,7 @@
 import type { AzureAuthenticatedConnectionInfo, IKustoClient } from '../types';
 import type { Database, EngineSchema, Function, InputParameter, Table, TableEntityType } from '../../schema';
 import { GlobalMementoKeys } from '../../../constants';
-import { getFromCache, updateCache } from '../../../cache';
+import { getFromGlobalCache, updateGlobalCache } from '../../../cache';
 import { fromConnectionInfo } from '..';
 
 export async function getClusterSchema(connection: AzureAuthenticatedConnectionInfo): Promise<EngineSchema> {
@@ -29,7 +29,7 @@ async function getDatabases(client: IKustoClient, clusterUri: string, ignoreCach
     if (promise && !ignoreCache) {
         return promise;
     }
-    const cache = getFromCache<string[]>(key);
+    const cache = getFromGlobalCache<string[]>(key);
     if (Array.isArray(cache) && !ignoreCache) {
         return JSON.parse(JSON.stringify(cache));
     }
@@ -49,7 +49,7 @@ async function getDatabases(client: IKustoClient, clusterUri: string, ignoreCach
                 );
             }
             const dbNames: string[] = result.primaryResults[0]._rows.map((item) => item[dbNameColumn.ordinal]);
-            await updateCache(key, dbNames);
+            await updateGlobalCache(key, dbNames);
             return dbNames;
         } finally {
             databasePromises.delete(key);
@@ -110,6 +110,7 @@ function translateResponseTableToSchemaTable(table: TableSchema, entityType: Tab
     return {
         entityType,
         name: table.Name,
+        folder: table.Folder,
         docstring: table.DocString,
         columns: table.OrderedColumns.map((col) => {
             return {
@@ -145,6 +146,7 @@ function translateResponseFunctionToSchemaFunction(fn: FunctionSchema): Function
         name: fn.Name,
         docstring: fn.DocString,
         body: fn.Body,
+        folder: fn.Folder,
         inputParameters: fn.InputParameters.map(translateResponseInputParamToSchemaColumn)
     };
 }
@@ -160,7 +162,7 @@ async function getDatabaseSchema(
     if (promise && !ignoreCache) {
         return promise;
     }
-    const cache = getFromCache<Database>(key);
+    const cache = getFromGlobalCache<Database>(key);
     if (cache && !ignoreCache) {
         return JSON.parse(JSON.stringify(cache));
     }
@@ -195,7 +197,7 @@ async function getDatabaseSchema(
                 ],
                 functions: functions.map(translateResponseFunctionToSchemaFunction)
             };
-            await updateCache(key, dbSchema);
+            await updateGlobalCache(key, dbSchema);
             return dbSchema;
         } finally {
             dbSchemaPromises.delete(key);

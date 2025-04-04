@@ -1,5 +1,5 @@
 import { ProgressLocation, window } from 'vscode';
-import { getFromCache, updateCache } from '../../cache';
+import { getFromGlobalCache, updateGlobalCache } from '../../cache';
 import { GlobalMementoKeys } from '../../constants';
 import { KustoNotebookConnectionMetadata } from '../../content/provider';
 import { EngineSchema } from '../schema';
@@ -56,7 +56,7 @@ export abstract class BaseConnection<T extends IConnectionInfo> implements IConn
             return this.schema;
         }
 
-        const cache = getFromCache<EngineSchema>(key);
+        const cache = getFromGlobalCache<EngineSchema>(key);
         if (cache && !ignoreCache) {
             return JSON.parse(JSON.stringify(cache));
         }
@@ -64,7 +64,7 @@ export abstract class BaseConnection<T extends IConnectionInfo> implements IConn
         if (options?.hideProgress) {
             try {
                 const schema = await this.getSchemaInternal();
-                await updateCache(this.schemaCacheId, schema);
+                await updateGlobalCache(this.schemaCacheId, schema);
                 return schema;
             } finally {
                 this.schema = undefined;
@@ -77,7 +77,7 @@ export abstract class BaseConnection<T extends IConnectionInfo> implements IConn
                     async (_progress, _token) => {
                         try {
                             const schema = await this.getSchemaInternal();
-                            await updateCache(this.schemaCacheId, schema);
+                            await updateGlobalCache(this.schemaCacheId, schema);
                             return schema;
                         } finally {
                             this.schema = undefined;

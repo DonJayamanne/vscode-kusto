@@ -1,6 +1,15 @@
-import { commands, window } from 'vscode';
+import { commands, window, workspace } from 'vscode';
 import { registerDisposable } from '../utils';
-import { ClusterNode, DatabaseNode, KustoClusterExplorer, TableNode } from './treeData';
+import {
+    ClusterNode,
+    ColumnNode,
+    DatabaseNode,
+    FunctionNode,
+    FunctionsNode,
+    InputParameterNode,
+    KustoClusterExplorer,
+    TableNode
+} from './treeData';
 import { addNewConnection } from '../kusto/connections/management';
 import { getCachedConnections, onConnectionChanged } from '../kusto/connections/storage';
 import { fromConnectionInfo } from '../kusto/connections';
@@ -22,6 +31,7 @@ export class ClusterTreeView {
         registerDisposable(commands.registerCommand('kusto.removeConnection', handler.removeConnection, handler));
         registerDisposable(commands.registerCommand('kusto.refreshNode', handler.onRefreshNode, handler));
         registerDisposable(commands.registerCommand('kusto.createNotebook', handler.createNotebook, handler));
+        registerDisposable(commands.registerCommand('kusto.viewFunctionCode', handler.viewFunctionCode, handler));
         onConnectionChanged((e) =>
             e.change === 'added'
                 ? clusterExplorer.addConnection(e.connection)
@@ -39,6 +49,18 @@ export class ClusterTreeView {
         }
         if (e instanceof TableNode) {
             this.clusterExplorer.refreshConnection(e.parent.parent.info);
+        }
+        if (e instanceof ColumnNode) {
+            this.clusterExplorer.refreshConnection(e.parent.parent.parent.info);
+        }
+        if (e instanceof FunctionsNode) {
+            this.clusterExplorer.refreshConnection(e.parent.parent.info);
+        }
+        if (e instanceof FunctionNode) {
+            this.clusterExplorer.refreshConnection(e.parent.parent.info);
+        }
+        if (e instanceof InputParameterNode) {
+            this.clusterExplorer.refreshConnection(e.parent.parent.parent.info);
         }
         if (!e) {
             this.clusterExplorer.refresh();
@@ -91,5 +113,15 @@ export class ClusterTreeView {
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await createUntitledNotebook({ ...connectionInfo, database } as any, cellCode);
+    }
+    private async viewFunctionCode(func: FunctionNode) {
+        if (!func || !(func instanceof FunctionNode)) {
+            return;
+        }
+        const code = `let ${func.function.name} = (${func.function.inputParameters
+            .map((p) => `${p.name}${p.cslType || p.type ? ':' : ''}${p.cslType || p.type || ''}`)
+            .join(', ')})\n${func.function.body}`;
+        const doc = await workspace.openTextDocument({ language: 'kusto', content: code });
+        await window.showTextDocument(doc);
     }
 }

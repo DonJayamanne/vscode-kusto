@@ -1,6 +1,5 @@
 # Contributing to the Notebook Renderers extension for Visual Studio Code
 
-
 ## Contributing a pull request
 
 ### Prerequisites
@@ -17,7 +16,7 @@
 ### Setup
 
 ```shell
-git clone https://github.com/notebookPowerTools/vscode-kusto
+git clone https://github.com/donjayamanne/vscode-kusto
 cd vscode-kusto
 npm ci
 ```
@@ -45,4 +44,3 @@ Steps to build the extension on your machine once you've cloned the repo:
 > npm ci
 > npm run package
 ```
-

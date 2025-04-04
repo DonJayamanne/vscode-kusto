@@ -7,6 +7,7 @@ export interface Column {
 }
 export interface Table {
     name: string;
+    folder?: string;
     entityType?: TableEntityType;
     columns: Column[];
     docstring?: string;
@@ -26,6 +27,7 @@ export type InputParameter = ScalarParameter & { columns?: ScalarParameter[] };
 export interface Function {
     name: string;
     body: string;
+    folder?: string;
     inputParameters: InputParameter[];
     docstring?: string;
 }

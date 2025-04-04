@@ -10,6 +10,7 @@
 
         // // Include all types outside the type roots manually
         // "./types/slickgrid",
-        "../../vscode.d.ts"
+        "../../vscode.d.ts",
+        "../../vscode.*.d.ts"
     ]
 }

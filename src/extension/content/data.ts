@@ -1,8 +1,12 @@
-import { CancellationTokenSource, NotebookDocument, window, workspace } from 'vscode';
+import { CancellationTokenSource, commands, NotebookDocument, workspace } from 'vscode';
 import { AzureAuthenticatedConnection } from '../kusto/connections/azAuth';
 import { IConnectionInfo } from '../kusto/connections/types';
 import { ContentProvider, KustoNotebook } from './provider';
 import { encoder } from './utils';
+import { isConnectionValidForKustoQuery, updateNotebookConnection } from '../kusto/connections/notebookConnection';
+import { GlobalMementoKeys } from '../constants';
+import { getFromGlobalCache, updateGlobalCache } from '../cache';
+import { selectConnectionController } from '../kernel/connectionPicker';
 
 type KustoNotebookConnectionMetadata =
     | {
@@ -41,21 +45,29 @@ export function getConnectionFromNotebookMetadata(document: NotebookDocument) {
             return AzureAuthenticatedConnection.connectionInfofrom(connection);
         }
     }
+
+    if (document.notebookType === 'kusto-notebook-kql') {
+        return getFromGlobalCache<IConnectionInfo>(document.uri.toString().toLowerCase());
+    }
 }
 
 export async function createUntitledNotebook(connection?: IConnectionInfo, cellText?: string) {
     const contents: KustoNotebook = {
         // We don't want to create an empty notebook (add at least one blank cell)
-        cells: typeof cellText === 'string' ? [{ kind: 'code', source: cellText, outputs: [] }] : [],
+        cells: [{ kind: 'code', source: cellText || '', outputs: [] }],
         metadata: getNotebookMetadata(connection)
     };
-    // await commands.executeCommand('vscode.openWith', uri, 'kusto-notebook');
     const data = await new ContentProvider(false).deserializeNotebook(
         encoder.encode(JSON.stringify(contents)),
         new CancellationTokenSource().token
     );
     const doc = await workspace.openNotebookDocument('kusto-notebook', data);
-    await window.showNotebookDocument(doc);
+    await commands.executeCommand('vscode.openWith', doc.uri, 'kusto-notebook');
+    if (connection && isConnectionValidForKustoQuery(connection)) {
+        await updateNotebookConnection(doc, connection);
+        await updateGlobalCache(GlobalMementoKeys.lastUsedConnection, connection);
+        await selectConnectionController(doc, connection);
+    }
 }
 
 export function updateMetadataWithConnectionInfo(metadata: Record<string, unknown>, connection?: IConnectionInfo) {

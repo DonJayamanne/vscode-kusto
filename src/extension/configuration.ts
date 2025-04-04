@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
+import { registerDisposable } from './utils';
 
-export function registerConfigurationListener(context: vscode.ExtensionContext) {
-    context.subscriptions.push(
+export function registerConfigurationListener() {
+    registerDisposable(
         vscode.workspace.onDidChangeConfiguration(async (e) => {
             if (e.affectsConfiguration('kusto.persistOutputs')) {
                 const userAction = await vscode.window.showInformationMessage(

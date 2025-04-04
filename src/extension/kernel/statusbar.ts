@@ -2,21 +2,19 @@ import { KustoResponseDataSet } from 'azure-kusto-data/source/response';
 import {
     notebooks,
     CancellationToken,
-    ExtensionContext,
     NotebookCell,
     NotebookCellStatusBarAlignment,
     NotebookCellStatusBarItemProvider
 } from 'vscode';
+import { registerDisposable } from '../utils';
 
 export class StatusBarProvider implements NotebookCellStatusBarItemProvider {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     protected contructor() {}
-    static register(context: ExtensionContext) {
+    static register() {
         const statusBarProvider = new StatusBarProvider();
-        context.subscriptions.push(
-            notebooks.registerNotebookCellStatusBarItemProvider('kusto-notebook', statusBarProvider),
-            notebooks.registerNotebookCellStatusBarItemProvider('kusto-interactive', statusBarProvider)
-        );
+        registerDisposable(notebooks.registerNotebookCellStatusBarItemProvider('kusto-notebook', statusBarProvider));
+        registerDisposable(notebooks.registerNotebookCellStatusBarItemProvider('kusto-interactive', statusBarProvider));
     }
 
     provideCellStatusBarItems(cell: NotebookCell, _token: CancellationToken) {

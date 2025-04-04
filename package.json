@@ -2,9 +2,9 @@
     "name": "kusto",
     "displayName": "Kusto Notebooks",
     "description": "Run Kusto Queries in Notebooks",
-    "version": "0.4.4",
+    "version": "0.5.0",
     "engines": {
-        "vscode": "^1.76.0"
+        "vscode": "^1.95.0"
     },
     "publisher": "donjayamanne",
     "author": {
@@ -35,6 +35,8 @@
         "workspace"
     ],
     "categories": [
+        "AI",
+        "Chat",
         "Other",
         "Notebooks",
         "Visualization"
@@ -52,6 +54,9 @@
     ],
     "main": "./out/extension/index.js",
     "browser": "./out/extension/browser.js",
+    "enabledApiProposals": [
+        "notebookVariableProvider"
+    ],
     "contributes": {
         "configuration": {
             "type": "object",
@@ -68,8 +73,13 @@
                 "command": "kusto.createNotebook",
                 "title": "Create Kusto Notebook",
                 "category": "Notebook",
-                "enablement": "kusto.useProposedApi",
                 "icon": "$(notebook)"
+            },
+            {
+                "command": "kusto.viewFunctionCode",
+                "title": "View Code",
+                "category": "Notebook",
+                "icon": "$(code)"
             },
             {
                 "command": "kusto.executeSelectedQuery",
@@ -156,10 +166,16 @@
             }
         ],
         "menus": {
+            "file/newFile": [
+                {
+                    "command": "kusto.createNotebook",
+                    "group": "notebook"
+                }
+            ],
             "commandPalette": [
                 {
                     "command": "kusto.changeDocumentConnection",
-                    "when": "notebookType == kusto-notebook || notebookType == kusto-notebook-kql || notebookType == jupyter-notebook"
+                    "when": "notebookType == jupyter-notebook"
                 },
                 {
                     "command": "kusto.exportNotebookAsScript",
@@ -200,7 +216,7 @@
             "editor/title": [
                 {
                     "command": "kusto.changeDocumentConnection",
-                    "when": "notebookType == kusto-notebook || notebookType == kusto-notebook-kql || notebookType == jupyter-notebook",
+                    "when": "notebookType == jupyter-notebook",
                     "group": "navigation@1"
                 },
                 {
@@ -243,13 +259,38 @@
                     "group": "inline@1"
                 },
                 {
+                    "command": "kusto.refreshNode",
+                    "when": "view == kustoExplorer && viewItem == tables",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "kusto.refreshNode",
+                    "when": "view == kustoExplorer && viewItem == functions",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "kusto.viewFunctionCode",
+                    "when": "view == kustoExplorer && viewItem == function",
+                    "group": "inline@1"
+                },
+                {
+                    "command": "kusto.refreshNode",
+                    "when": "view == kustoExplorer && viewItem == function",
+                    "group": "inline@2"
+                },
+                {
+                    "command": "kusto.refreshNode",
+                    "when": "view == kustoExplorer && viewItem == inputParameter",
+                    "group": "inline@1"
+                },
+                {
                     "command": "kusto.createNotebook",
-                    "when": "view == kustoExplorer && viewItem == database && kusto.useProposedApi",
+                    "when": "view == kustoExplorer && viewItem == database",
                     "group": "inline@2"
                 },
                 {
                     "command": "kusto.createNotebook",
-                    "when": "view == kustoExplorer && viewItem == table && kusto.useProposedApi",
+                    "when": "view == kustoExplorer && viewItem == table",
                     "group": "inline@2"
                 }
             ]
@@ -294,6 +335,22 @@
                 "mimeTypes": [
                     "application/vnd.kusto.result+json",
                     "application/vnd.kusto.result.viz+json"
+                ]
+            }
+        ],
+        "languageModelTools": [
+            {
+                "name": "kusto_schema",
+                "toolReferenceName": "kusto_schema",
+                "displayName": "Kusto Schema",
+                "canBeReferencedInPrompt": true,
+                "userDescription": "Always use this tool when generating Kusto KQL queries without making assumptions about the available tables, columns and functions.",
+                "modelDescription": "Generate a list of available functions with argument names, and tables with column names in a Kusto Database.",
+                "tags": [
+                    "kusto",
+                    "kql",
+                    "query",
+                    "schema"
                 ]
             }
         ]
@@ -378,8 +435,8 @@
         "svg-inline-loader": "^0.8.2",
         "thread-loader": "^3.0.4",
         "transform-loader": "^0.2.4",
-        "ts-loader": "^9.3.1",
-        "typescript": "^4.9.5",
+        "ts-loader": "^9.5.2",
+        "typescript": "^5.8.2",
         "url-loader": "^4.1.1",
         "vscode-dts": "^0.3.3",
         "vscode-test": "^1.4.0",

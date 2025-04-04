@@ -6,62 +6,90 @@ import {
     NotebookCellOutputItem,
     WorkspaceEdit,
     NotebookController,
-    ExtensionContext,
     Disposable,
     NotebookEdit,
     TextDocument
 } from 'vscode';
 import { Client } from '../kusto/client';
 import { getChartType } from '../output/chart';
-import { InteractiveWindowView, createPromiseFromToken } from '../utils';
+import { createPromiseFromToken, InteractiveWindowView, registerDisposable } from '../utils';
+import { encodeConnectionInfo, getDisplayInfo, IConnectionInfo } from '../kusto/connections/types';
+import { getLastUsedConnections } from './usedConnections';
+import { updateNotebookConnection } from '../kusto/connections/notebookConnection';
+import { VariableProvider } from './variables';
 
+const registeredControllers: KernelPerConnection[] = [];
+const variableProvider = new VariableProvider();
 export class KernelProvider {
-    public static register(context: ExtensionContext) {
-        context.subscriptions.push(new Kernel('kusto-notebook'));
-        context.subscriptions.push(new Kernel('kusto-notebook-kql'));
+    public static register() {
+        registerDisposable(variableProvider);
+        const lastUsedConnection = getLastUsedConnections();
+        lastUsedConnection.forEach((connection) => {
+            registerDisposable(registerController('kusto-notebook', connection));
+            registerDisposable(registerController('kusto-notebook-kql', connection));
+            registerDisposable(registerController(InteractiveWindowView, connection));
+        });
     }
 }
 
-export class Kernel extends Disposable {
-    notebookController: NotebookController;
-    public readonly interactiveController: NotebookController;
-    public static instance: Kernel;
+export function registerController(notebookType: string, connection: IConnectionInfo) {
+    const controllerId = getControllerId(connection, notebookType);
+    const existingController = registeredControllers.find(
+        (controller) =>
+            controller.notebookController.id === controllerId &&
+            controller.notebookController.notebookType === notebookType
+    );
+    if (existingController) {
+        return existingController;
+    }
+    const controller = new KernelPerConnection(notebookType, connection);
+    registeredControllers.push(controller);
+    registerDisposable(controller);
+    return controller;
+}
 
-    constructor(notebookType: 'kusto-notebook' | 'kusto-notebook-kql') {
+function getControllerId(connection: IConnectionInfo, notebookType: string) {
+    return `${notebookType}_${encodeConnectionInfo(connection)}`;
+}
+
+export class KernelPerConnection extends Disposable {
+    public readonly notebookController: NotebookController;
+    private readonly disposables: Disposable[] = [];
+    constructor(notebookType: string, private readonly connection: IConnectionInfo) {
         super(() => {
             this.dispose();
         });
-        this.notebookController = this.createController(
-            notebookType === 'kusto-notebook' ? 'kusto' : 'kusto-kql',
-            notebookType
+        const displayInfo = getDisplayInfo(this.connection);
+        this.notebookController = notebooks.createNotebookController(
+            getControllerId(connection, notebookType),
+            notebookType,
+            displayInfo.label,
+            this.execute.bind(this)
         );
-        if (notebookType === 'kusto-notebook') {
-            this.interactiveController = this.createController('kustoInteractive', InteractiveWindowView);
-        } else {
-            this.interactiveController = Kernel.instance.interactiveController;
-        }
-        if (notebookType === 'kusto-notebook') {
-            Kernel.instance = this;
-        }
+        this.notebookController.supportedLanguages = ['kusto'];
+        this.notebookController.supportsExecutionOrder = true;
+        this.notebookController.description = displayInfo.description;
+        this.notebookController.variableProvider = variableProvider;
+        this.disposables.push(
+            this.notebookController.onDidChangeSelectedNotebooks(({ notebook, selected }) => {
+                if (!selected) {
+                    return;
+                }
+                updateNotebookConnection(notebook, this.connection);
+            })
+        );
     }
 
     dispose() {
-        this.notebookController.dispose();
+        this.disposables.forEach((disposable) => disposable.dispose());
     }
 
-    public executeInteractive(cells: NotebookCell[], textDocument: TextDocument, controller: NotebookController) {
+    public executeInteractive(cells: NotebookCell[], textDocument: TextDocument) {
         cells.forEach((cell) => {
-            this.executeCell(cell, controller, textDocument);
+            this.executeCell(cell, this.notebookController, textDocument);
         });
     }
 
-    private createController(id: string, view: string) {
-        const controller = notebooks.createNotebookController(id, view, 'Kusto', this.execute.bind(this));
-        controller.supportedLanguages = ['kusto'];
-        controller.supportsExecutionOrder = true;
-        controller.description = 'Execute Kusto Queries';
-        return controller;
-    }
     public execute(cells: NotebookCell[], _notebook: NotebookDocument, controller: NotebookController) {
         cells.forEach((cell) => {
             this.executeCell(cell, controller);
@@ -74,7 +102,7 @@ export class Kernel extends Disposable {
         textDocument?: TextDocument
     ): Promise<void> {
         const task = controller.createNotebookCellExecution(cell);
-        const client = await Client.create(textDocument || cell.notebook);
+        const client = await Client.create(textDocument || cell.notebook, this.connection);
         if (!client) {
             task.end(false);
             return;
@@ -138,10 +166,10 @@ export class Kernel extends Disposable {
             } else if (ex && typeof ex === 'object' && 'message' in ex) {
                 const innerError =
                     'innererror' in ex &&
-                        typeof ex.innererror === 'object' &&
-                        ex.innererror &&
-                        'message' in ex.innererror &&
-                        ex.innererror.message
+                    typeof ex.innererror === 'object' &&
+                    ex.innererror &&
+                    'message' in ex.innererror &&
+                    ex.innererror.message
                         ? ` (${ex.innererror.message})`
                         : '';
                 const message = `${ex.message}${innerError}`;

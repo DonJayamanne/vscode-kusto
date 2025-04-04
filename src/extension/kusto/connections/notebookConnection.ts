@@ -9,11 +9,11 @@ import {
 } from 'vscode';
 import { commands, NotebookDocument, Uri, workspace, WorkspaceEdit } from 'vscode';
 import { IConnectionInfo } from './types';
-import { registerDisposable } from '../../utils';
+import { isInteractiveWindow, isNotebookDocument, registerDisposable } from '../../utils';
 import { isJupyterNotebook, getJupyterNotebook, isKustoNotebook, getKustoNotebook } from '../../utils';
 import { isEqual } from 'lodash';
 import { captureConnectionFromUser } from './management';
-import { getFromCache, updateCache } from '../../cache';
+import { getFromGlobalCache, updateGlobalCache } from '../../cache';
 import { getConnectionFromNotebookMetadata, updateMetadataWithConnectionInfo } from '../../content/data';
 import { GlobalMementoKeys, useProposedApi } from '../../constants';
 import { AzureAuthenticatedConnection } from './azAuth';
@@ -40,7 +40,7 @@ export async function ensureDocumentHasConnectionInfo(
         return ensureDocumentHasConnectionInfoInternal(document, false);
     }
 }
-export function isConnectionValidForKustoQuery(connection: Partial<IConnectionInfo>) {
+export function isConnectionValidForKustoQuery(connection: Partial<IConnectionInfo>): connection is IConnectionInfo {
     switch (connection.type) {
         case 'azAuth':
             return connection.cluster && connection.database ? true : false;
@@ -52,27 +52,32 @@ export function isConnectionValidForKustoQuery(connection: Partial<IConnectionIn
                 : false;
     }
 }
-async function ensureNotebookHasConnectionInfoInternal(
-    document: NotebookDocument,
+export async function ensureNotebookHasConnectionInfoInternal(
+    document: NotebookDocument | TextDocument,
     changeExistingValue = false
 ): Promise<IConnectionInfo | undefined> {
     const currentInfo = getConnectionInfoFromDocumentMetadata(document, changeExistingValue);
     if (!changeExistingValue && currentInfo && isConnectionValidForKustoQuery(currentInfo)) {
         return currentInfo as IConnectionInfo;
     }
-    if (!isKustoNotebook(document) && !isJupyterNotebook(document)) {
+    if (
+        isNotebookDocument(document) &&
+        !isKustoNotebook(document) &&
+        !isJupyterNotebook(document) &&
+        !isInteractiveWindow(document)
+    ) {
         return;
     }
     const info = await captureConnectionFromUser(getConnectionInfoFromDocumentMetadata(document));
     if (!info || !isConnectionValidForKustoQuery(info)) {
         return;
     }
-    if (isKustoNotebook(document)) {
+    if (isNotebookDocument(document) && isKustoNotebook(document)) {
         await updateNotebookConnection(document, info);
     } else {
-        await updateCache(document.uri.toString().toLowerCase(), info);
+        await updateGlobalCache(document.uri.toString().toLowerCase(), info);
     }
-    await updateCache(GlobalMementoKeys.lastUsedConnection, info);
+    await updateGlobalCache(GlobalMementoKeys.lastUsedConnection, info);
     return info;
 }
 async function ensureDocumentHasConnectionInfoInternal(
@@ -90,8 +95,8 @@ async function ensureDocumentHasConnectionInfoInternal(
     if (isEqual(currentInfo, info)) {
         return;
     }
-    await updateCache(document.uri.toString().toLowerCase(), info);
-    await updateCache(GlobalMementoKeys.lastUsedConnection, info);
+    await updateGlobalCache(document.uri.toString().toLowerCase(), info);
+    await updateGlobalCache(GlobalMementoKeys.lastUsedConnection, info);
     onDidChangeConnection.fire(document);
     return info;
 }
@@ -147,7 +152,7 @@ export function getConnectionInfoFromDocumentMetadata(
     ignoreCache = false
 ): Partial<IConnectionInfo> | undefined {
     // If user manually chose a connection, then use that.
-    let connection = getFromCache<IConnectionInfo>(document.uri.toString().toLowerCase());
+    let connection = getFromGlobalCache<IConnectionInfo>(document.uri.toString().toLowerCase());
     if (connection) {
         return connection;
     }
@@ -164,17 +169,17 @@ export function getConnectionInfoFromDocumentMetadata(
             connection = getConnectionFromNotebookMetadata(notebook);
         }
     } else {
-        connection = getFromCache<IConnectionInfo>(document.uri.toString().toLowerCase());
+        connection = getFromGlobalCache<IConnectionInfo>(document.uri.toString().toLowerCase());
     }
-    if (connection && !getFromCache(GlobalMementoKeys.lastUsedConnection)) {
+    if (connection && !getFromGlobalCache(GlobalMementoKeys.lastUsedConnection)) {
         // If we have a preferred connection, and user hasn't ever selected a connection (before),
         // then use current connection as the preferred connection for future notebooks/kusto files.
-        updateCache(GlobalMementoKeys.lastUsedConnection, connection);
+        updateGlobalCache(GlobalMementoKeys.lastUsedConnection, connection);
     }
     if (ignoreCache) {
         return connection;
     }
-    return connection || getFromCache(GlobalMementoKeys.lastUsedConnection);
+    return connection || getFromGlobalCache(GlobalMementoKeys.lastUsedConnection);
 }
 const kqlMagicConnectionStringStartDelimiter = 'AzureDataExplorer://'.toLowerCase();
 function textDocumentHasJupyterConnectionInfo(textDocument: TextDocument) {
@@ -226,7 +231,7 @@ function getConnectionInfoFromJupyterNotebook(document: NotebookDocument): IConn
         return;
     }
 }
-async function updateNotebookConnection(document: NotebookDocument, info: IConnectionInfo) {
+export async function updateNotebookConnection(document: NotebookDocument, info: IConnectionInfo) {
     if (isJupyterNotebook(document) || !isKustoNotebook(document)) {
         console.error('oops');
         return;

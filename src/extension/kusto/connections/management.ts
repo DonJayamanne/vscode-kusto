@@ -22,11 +22,14 @@ type State = {
     shouldCaptureDatabase?: boolean;
 };
 
-export async function captureConnectionFromUser(currentConnection?: Partial<IConnectionInfo>) {
+export async function captureConnectionFromUser(
+    currentConnection?: Partial<IConnectionInfo>,
+    shouldCaptureDatabase = true
+) {
     const state: State = {
         connection: JSON.parse(JSON.stringify(currentConnection || {})),
         dismissed: false,
-        shouldCaptureDatabase: false
+        shouldCaptureDatabase
     };
     const multiStep = create<typeof state>();
     await multiStep.run(selectConnection, state);
