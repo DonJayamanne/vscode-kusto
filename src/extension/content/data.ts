@@ -65,6 +65,7 @@ export async function createUntitledNotebook(connection?: IConnectionInfo, cellT
     await commands.executeCommand('vscode.openWith', doc.uri, 'kusto-notebook');
     if (connection && isConnectionValidForKustoQuery(connection)) {
         await updateNotebookConnection(doc, connection);
+        await updateGlobalCache(doc.uri.toString().toLowerCase(), connection);
         await updateGlobalCache(GlobalMementoKeys.lastUsedConnection, connection);
         await selectConnectionController(doc, connection);
     }
