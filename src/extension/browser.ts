@@ -20,12 +20,14 @@ import { KqlContentProvider } from './content/kqlProvider';
 import { CellCodeLensProvider } from './interactive/cells';
 import { registerDisposableRegistry } from './utils';
 import { registerKqlNotebookConnectionHandler } from './content/kqlConnection';
+import { regsisterQuickFixAction } from './content/quickFix';
 export async function activate(context: ExtensionContext) {
     registerDisposableRegistry(context);
     initializeGlobalCache(context.globalState, context.workspaceState);
     initializeConstants(false); // In browser context dont use proposed API, try to always use stable stuff...
     initializeLanguageService(context);
     initializeConnectionStorage(context);
+    regsisterQuickFixAction();
     registerConnection('azAuth', AzureAuthenticatedConnection, (info) =>
         'cluster' in info ? AzureAuthenticatedConnection.connectionInfofrom(info) : undefined
     );

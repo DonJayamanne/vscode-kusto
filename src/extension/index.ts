@@ -22,6 +22,7 @@ import { KqlContentProvider } from './content/kqlProvider';
 import { registerKernelPicker } from './kernel/connectionPicker';
 import { regsiterSchemaTool } from './llm/schemaTool';
 import { registerKqlNotebookConnectionHandler } from './content/kqlConnection';
+import { regsisterQuickFixAction } from './content/quickFix';
 
 export async function activate(context: ExtensionContext) {
     registerDisposableRegistry(context);
@@ -29,6 +30,7 @@ export async function activate(context: ExtensionContext) {
     initializeConstants(context.extension.packageJSON.enableProposedApi); // In browser context dont use proposed API, try to always use stable stuff...
     initializeLanguageService(context);
     initializeConnectionStorage(context);
+    regsisterQuickFixAction();
     registerConnection('azAuth', AzureAuthenticatedConnection, (info) =>
         'cluster' in info ? AzureAuthenticatedConnection.connectionInfofrom(info) : undefined
     );

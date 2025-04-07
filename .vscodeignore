@@ -2,6 +2,7 @@
 .vscode/**
 .vscode-test/**
 build/**
+images/*.mp4
 out/test/**
 out/**/*.map
 out/**/*.stats.json
