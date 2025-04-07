@@ -5,8 +5,6 @@ import {
     isConnectionValidForKustoQuery,
     updateNotebookConnection
 } from '../kusto/connections/notebookConnection';
-import { updateGlobalCache } from '../cache';
-import { GlobalMementoKeys } from '../constants';
 import { selectConnectionController } from '../kernel/connectionPicker';
 
 export function registerKqlNotebookConnectionHandler() {
@@ -20,7 +18,6 @@ export function registerKqlNotebookConnectionHandler() {
                 return;
             }
             await updateNotebookConnection(doc, connection);
-            await updateGlobalCache(GlobalMementoKeys.lastUsedConnection, connection);
             await selectConnectionController(doc, connection);
         })
     );

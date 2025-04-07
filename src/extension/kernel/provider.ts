@@ -95,12 +95,8 @@ export class KernelPerConnection extends Disposable {
                 }
                 if (isKustoNotebook(notebook)) {
                     await updateNotebookConnection(notebook, this.connection);
-                    if (notebook.notebookType === 'kusto-notebook-kql') {
-                        await updateGlobalCache(notebook.uri.toString().toLowerCase(), this.connection);
-                    }
-                } else {
-                    await updateGlobalCache(notebook.uri.toString().toLowerCase(), this.connection);
                 }
+                await updateGlobalCache(notebook.uri.toString().toLowerCase(), this.connection);
                 await updateGlobalCache(GlobalMementoKeys.lastUsedConnection, connection);
             })
         );

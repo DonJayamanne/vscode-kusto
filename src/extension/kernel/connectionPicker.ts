@@ -4,6 +4,8 @@ import { updateLastUsedControllerConnections } from './usedConnections';
 import { registerController } from './provider';
 import { InteractiveWindowView, registerDisposable } from '../utils';
 import { IConnectionInfo } from '../kusto/connections/types';
+import { updateGlobalCache } from '../cache';
+import { GlobalMementoKeys } from '../constants';
 
 export function registerKernelPicker() {
     registerDisposable(new KernelPicker('kusto-notebook'));
@@ -74,7 +76,9 @@ export async function selectConnectionController(notebook: NotebookDocument, con
     if (window.activeNotebookEditor?.notebook === notebook) {
         commandArgs['notebookEditor'] = window.activeNotebookEditor;
     }
-    updateLastUsedControllerConnections(connection);
+    await updateLastUsedControllerConnections(connection);
+    await updateGlobalCache(GlobalMementoKeys.lastUsedConnection, connection);
+    await updateGlobalCache(notebook.uri.toString().toLowerCase(), connection);
     const result = await commands.executeCommand('notebook.selectKernel', commandArgs);
     console.log('Kernel selected', result);
 }
