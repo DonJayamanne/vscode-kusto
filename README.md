@@ -16,7 +16,7 @@ A [Visual Studio Code](https://code.visualstudio.com/) [extension](https://marke
 
 ### Schema View:
 
-<img src=https://raw.githubusercontent.com/donjayamanne/vscode-kusto/main/images/clusters.png>
+<img src=https://raw.githubusercontent.com/donjayamanne/vscode-kusto/main/images/clusters.gif>
 
 # Features
 
