@@ -2,7 +2,7 @@ import { decodeConnectionInfo, encodeConnectionInfo, IConnectionInfo } from '../
 import { getFromWorkspaceCache, updateWorkspaceCache } from '../cache';
 import { onConnectionChanged } from '../kusto/connections/storage';
 
-const stateKey = 'kusto.lastUsedConnections.v2';
+const stateKey = 'kusto.lastUsedConnections.v3';
 export function getLastUsedControllerConnections(): IConnectionInfo[] {
     const lastUsedConnections = getFromWorkspaceCache<string[]>(stateKey);
     if (!lastUsedConnections) {
@@ -22,7 +22,9 @@ export async function updateLastUsedControllerConnections(connection: IConnectio
 
 async function removeFromLastUsedControllerConnections(connection: IConnectionInfo) {
     const lastUsedConnections = getLastUsedControllerConnections();
-    const encodedConnections = Array.from(new Set(lastUsedConnections.filter((c) => c.id !== connection.id)));
+    const encodedConnections = Array.from(new Set(lastUsedConnections.filter((c) => c.id !== connection.id))).map(
+        (connection) => encodeConnectionInfo(connection)
+    );
     await updateWorkspaceCache(stateKey, encodedConnections);
 }
 

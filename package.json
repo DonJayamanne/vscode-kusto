@@ -4,7 +4,7 @@
     "description": "Run Kusto Queries in Notebooks",
     "version": "0.5.0",
     "engines": {
-        "vscode": "^1.95.0"
+        "vscode": "^1.97.0"
     },
     "publisher": "donjayamanne",
     "author": {
