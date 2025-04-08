@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 (9 April 2025)
+
+### Enhancements
+
+1. Chat Tool to retrieve Schema for database.
+2. Improved Connection Picker for Text Files
+3. Improved Kernel Picker for Notebooks and Interactive Window
+
 ## 0.4.1 (7 March 2023)
 
 ### Enhancements
