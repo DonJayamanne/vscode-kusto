@@ -2,6 +2,10 @@
 
 A [Visual Studio Code](https://code.visualstudio.com/) [extension](https://marketplace.visualstudio.com/items?itemName=donjayamanne.kusto) that provides the ability to run Kusto queries in Notebooks as well as plain text files.
 
+### Chat:
+
+<img src=https://raw.githubusercontent.com/donjayamanne/vscode-kusto/main/images/copilot.gif>
+
 ### Configure Connection:
 
 <img src=https://raw.githubusercontent.com/donjayamanne/vscode-kusto/main/images/configureConnection.gif>
