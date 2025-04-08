@@ -301,8 +301,15 @@ function getCslTypeIcon(cslType: string): ThemeIcon {
             return new ThemeIcon('history');
         case 'guid':
             return new ThemeIcon('symbol-constant');
+        case 'uint8':
+        case 'int16':
+        case 'uint16':
         case 'int':
+        case 'uint':
+        case 'float':
+        case 'decimal':
         case 'long':
+        case 'ulong':
         case 'real':
             return new ThemeIcon('symbol-numeric');
         case 'bool':
