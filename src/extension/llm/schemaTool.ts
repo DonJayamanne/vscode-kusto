@@ -15,6 +15,7 @@ import {
 import { fromConnectionInfo } from '../kusto/connections';
 import { Database, EngineSchema } from '../kusto/schema';
 import { registerDisposable } from '../utils';
+import { captureConnectionFromUser } from '../kusto/connections/management';
 
 export function regsiterSchemaTool() {
     registerDisposable(lm.registerTool(KustoSchemaTool.Id, new KustoSchemaTool()));
@@ -28,7 +29,8 @@ export class KustoSchemaTool implements LanguageModelTool<any> {
         if (!document) {
             return;
         }
-        const connection = getConnectionInfoFromDocumentMetadata(document);
+        // If we do not have a valid connection, ask the user to select one.
+        const connection = getConnectionInfoFromDocumentMetadata(document) || (await captureConnectionFromUser());
         if (!connection || !isConnectionValidForKustoQuery(connection)) {
             return;
         }

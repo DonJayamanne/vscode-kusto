@@ -54,9 +54,6 @@
     ],
     "main": "./out/extension/index.js",
     "browser": "./out/extension/browser.js",
-    "enabledApiProposals": [
-        "notebookVariableProvider"
-    ],
     "contributes": {
         "configuration": {
             "type": "object",
@@ -344,8 +341,8 @@
                 "toolReferenceName": "kusto_schema",
                 "displayName": "Kusto Schema",
                 "canBeReferencedInPrompt": true,
-                "userDescription": "Always use this tool when generating Kusto KQL queries without making assumptions about the available tables, columns and functions.",
-                "modelDescription": "Generate a list of available functions with argument names, and tables with column names in a Kusto Database.",
+                "userDescription": "Generates schema of a Kusto database.",
+                "modelDescription": "Always use this tool when generating Kusto KQL queries without making assumptions about the available tables, columns and functions. It generates a list of available functions with argument names, and tables with column names in a Kusto Database.",
                 "tags": [
                     "kusto",
                     "kql",

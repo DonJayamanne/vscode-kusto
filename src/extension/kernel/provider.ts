@@ -16,16 +16,13 @@ import { createPromiseFromToken, InteractiveWindowView, isKustoNotebook, registe
 import { encodeConnectionInfo, getDisplayInfo, IConnectionInfo } from '../kusto/connections/types';
 import { getLastUsedControllerConnections } from './usedConnections';
 import { updateNotebookConnection } from '../kusto/connections/notebookConnection';
-import { VariableProvider } from './variables';
 import { onConnectionChanged } from '../kusto/connections/storage';
 import { updateGlobalCache } from '../cache';
 import { GlobalMementoKeys } from '../constants';
 
 const registeredControllers: KernelPerConnection[] = [];
-const variableProvider = new VariableProvider();
 export class KernelProvider {
     public static register() {
-        registerDisposable(variableProvider);
         const lastUsedConnection = getLastUsedControllerConnections();
         lastUsedConnection.forEach((connection) => {
             registerDisposable(registerController('kusto-notebook', connection));
@@ -87,7 +84,6 @@ export class KernelPerConnection extends Disposable {
         this.notebookController.supportedLanguages = ['kusto'];
         this.notebookController.supportsExecutionOrder = true;
         this.notebookController.description = displayInfo.description;
-        this.notebookController.variableProvider = variableProvider;
         this.disposables.push(
             this.notebookController.onDidChangeSelectedNotebooks(async ({ notebook, selected }) => {
                 if (!selected) {
