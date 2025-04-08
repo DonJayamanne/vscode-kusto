@@ -2,6 +2,26 @@
 
 A [Visual Studio Code](https://code.visualstudio.com/) [extension](https://marketplace.visualstudio.com/items?itemName=donjayamanne.kusto) that provides the ability to run Kusto queries in Notebooks as well as plain text files.
 
+# Features
+
+-   Run Kusto Queries
+-   Graphs & Data Viewer
+-   Code Completion
+-   Syntax highlighting
+-   Code refactoring
+-   Code formatting
+-   Kusto panel with access to Clusters, Databases, Tables, etc
+-   Run Kusto queries in Plain text files, Notebooks or in an Interactive Window
+
+# Getting Started
+
+-   Open a `*.kql|*.csl` file and start typing to get code completion.
+-   Open a `*.kql|*.csl` file and click on the `Run Query` code lense
+-   Open a `*.kql|*.csl` file as a notebook
+-   Create a file with extension `*.knb` (or use the command `Create Kusto Notebook`)
+-   With text file (`*.kql`, `*.csl`) use the command `Configure Kusto Connection` to configure the Kusto connection for a .
+-   With notebooks, select the cluster and database from via the Kernel Picker (or `Notebook: Select Notebook Kernel` command).
+
 ### Chat:
 
 <img src=https://raw.githubusercontent.com/donjayamanne/vscode-kusto/main/images/copilot.gif>
@@ -21,26 +41,6 @@ A [Visual Studio Code](https://code.visualstudio.com/) [extension](https://marke
 ### Schema View:
 
 <img src=https://raw.githubusercontent.com/donjayamanne/vscode-kusto/main/images/clusters.gif>
-
-# Features
-
--   Run Kusto Queries
--   Graphs & Data Viewer
--   Code Completion
--   Syntax highlighting
--   Code refactoring
--   Code formatting
--   Kusto panel with access to Clusters, Databases, Tables, etc
--   Run Kusto queries in Plain text files, Notebooks or in an Interactive Window
-
-# Getting Started
-
--   Open a `*.kql|*.csl` file and start typing to get code completion.
--   Open a `*.kql|*.csl` file and click on the `Run Query` code lense
--   Open a `*.kql|*.csl` file as a notebook
--   Create a file with extension `*.knb` (or use the command `Create Kusto Notebook`)
--   Use the command `Configure Kusto Connection` to configure the Kusto connection for a text file (`*.kql`, `*.csl`).
--   For notebooks, select the cluster and database from via the Kernel Picker.
 
 # Works with Jupyter Notebooks as well (when using [kqlmagic](https://pypi.org/project/Kqlmagic/))
 
