@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2 (27 April 2025)
+
+### Enhancements
+
+1. Renamed Chat Tool from `kusto_schema` to `kustoSchema`.
+
 ## 0.5.0 (9 April 2025)
 
 ### Enhancements
