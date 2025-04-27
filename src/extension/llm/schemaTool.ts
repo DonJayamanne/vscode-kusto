@@ -22,7 +22,7 @@ export function regsiterSchemaTool() {
 }
 
 export class KustoSchemaTool implements LanguageModelTool<any> {
-    public static Id = 'kusto_schema';
+    public static Id = 'kustoSchema';
 
     async invoke(_options: LanguageModelToolInvocationOptions<any>, _token: CancellationToken) {
         const document = window.activeTextEditor?.document || window.activeNotebookEditor?.notebook;
