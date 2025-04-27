@@ -2,7 +2,7 @@
     "name": "kusto",
     "displayName": "Kusto Notebooks",
     "description": "Run Kusto Queries in Notebooks",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "engines": {
         "vscode": "^1.97.0"
     },
@@ -28,7 +28,8 @@
     "keywords": [
         "notebook",
         "kusto",
-        "multi-root ready"
+        "multi-root ready",
+        "language-model-tools"
     ],
     "extensionKind": [
         "ui",
@@ -337,12 +338,12 @@
         ],
         "languageModelTools": [
             {
-                "name": "kusto_schema",
-                "toolReferenceName": "kusto_schema",
+                "name": "kustoSchema",
+                "toolReferenceName": "kustoSchema",
                 "displayName": "Kusto Schema",
                 "canBeReferencedInPrompt": true,
-                "userDescription": "Generates schema of a Kusto database.",
-                "modelDescription": "Always use this tool when generating Kusto KQL queries without making assumptions about the available tables, columns and functions. It generates a list of available functions with argument names, and tables with column names in a Kusto Database.",
+                "userDescription": "Fetches the schema of a Kusto database.",
+                "modelDescription": "Returns the Schema of a Kusto Database (including table, column, function names and more). Always use this tool when generating Kusto KQL queries without making assumptions about the available tables, columns and functions.",
                 "tags": [
                     "kusto",
                     "kql",
