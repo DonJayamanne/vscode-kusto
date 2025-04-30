@@ -23,6 +23,7 @@ import { registerKernelPicker } from './kernel/connectionPicker';
 import { regsiterSchemaTool } from './llm/schemaTool';
 import { registerKqlNotebookConnectionHandler } from './content/kqlConnection';
 import { regsisterQuickFixAction } from './content/quickFix';
+import { registerRunKustoQueryTool } from './llm/runKustoQueryTool';
 
 export async function activate(context: ExtensionContext) {
     registerDisposableRegistry(context);
@@ -53,4 +54,5 @@ export async function activate(context: ExtensionContext) {
     registerKernelPicker();
     CellCodeLensProvider.register();
     regsiterSchemaTool();
+    registerRunKustoQueryTool();
 }
