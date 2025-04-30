@@ -350,6 +350,24 @@
                     "query",
                     "schema"
                 ]
+            },
+            {
+                "name": "runKustoQuery",
+                "toolReferenceName": "runKustoQuery",
+                "displayName": "Run Kusto Query",
+                "canBeReferencedInPrompt": true,
+                "userDescription": "Runs Kusto Queries",
+                "modelDescription": "Runs Kusto Queries",
+                "tags": ["kusto"],
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "description"
+                        }
+                    }
+                }
             }
         ]
     },
