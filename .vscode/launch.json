@@ -14,21 +14,35 @@
                 // "--enable-proposed-api",
                 "--extensionDevelopmentPath=${workspaceFolder}"
             ],
-            "outFiles": [
-                "${workspaceFolder}/out/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/out/**/*.js"],
             // "preLaunchTask": "${defaultBuildTask}"
+            "presentation": {
+                "group": "1_extension",
+                "order": 1
+            }
         },
-		{
-			"type": "node",
-			"request": "attach",
-			"name": "Attach to Server",
-			"address": "localhost",
-			"protocol": "inspector",
-			"port": 6012,
-			"sourceMaps": true,
-			"outFiles": ["${workspaceRoot}/out/server/**/*.js"]
-		},
+        {
+            "name": "Run Extension (web)",
+            "type": "extensionHost",
+            "debugWebWorkerHost": true,
+            "request": "launch",
+            "args": ["--extensionDevelopmentPath=${workspaceFolder}", "--extensionDevelopmentKind=web"],
+            "outFiles": ["${workspaceFolder}/out/**/*.js", "!${workspaceFolder}/**/node_modules**/*"],
+            "presentation": {
+                "group": "1_extension",
+                "order": 1
+            }
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Server",
+            "address": "localhost",
+            "protocol": "inspector",
+            "port": 6012,
+            "sourceMaps": true,
+            "outFiles": ["${workspaceRoot}/out/server/**/*.js"]
+        },
         {
             "name": "Extension Tests",
             "type": "extensionHost",
@@ -39,9 +53,7 @@
                 "--extensionDevelopmentPath=${workspaceFolder}",
                 "--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
             ],
-            "outFiles": [
-                "${workspaceFolder}/out/test/**/*.js"
-            ],
+            "outFiles": ["${workspaceFolder}/out/test/**/*.js"],
             "preLaunchTask": "${defaultBuildTask}"
         }
     ]

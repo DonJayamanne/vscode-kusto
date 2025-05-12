@@ -21,6 +21,9 @@ import { CellCodeLensProvider } from './interactive/cells';
 import { registerDisposableRegistry } from './utils';
 import { registerKqlNotebookConnectionHandler } from './content/kqlConnection';
 import { regsisterQuickFixAction } from './content/quickFix';
+import { registerKernelPicker } from './kernel/connectionPicker';
+import { regsiterSchemaTool } from './llm/schemaTool';
+
 export async function activate(context: ExtensionContext) {
     registerDisposableRegistry(context);
     initializeGlobalCache(context.globalState, context.workspaceState);
@@ -37,6 +40,7 @@ export async function activate(context: ExtensionContext) {
     AzureAuthenticatedConnection.registerKustoClient(KustoClient);
     AppInsightsConnection.registerKustoClient(KustoClient);
     KernelProvider.register();
+    // StatusBarProvider.register();
     ContentProvider.register();
     KqlContentProvider.register();
     ClusterTreeView.register();
@@ -44,7 +48,10 @@ export async function activate(context: ExtensionContext) {
     registerNotebookConnection();
     registerConfigurationListener();
     // monitorJupyterCells();
+    // registerInteractiveExperience();
     registerExportCommand();
+    registerKernelPicker();
     BrowserLanguageCapabilityProvider.register();
     CellCodeLensProvider.register();
+    regsiterSchemaTool();
 }
