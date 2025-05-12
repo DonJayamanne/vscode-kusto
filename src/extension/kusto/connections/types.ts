@@ -23,14 +23,15 @@ export type ConnectionType = 'appInsights' | 'azAuth';
 export type IConnectionInfo = AzureAuthenticatedConnectionInfo | AppInsightsConnectionInfo;
 
 export function encodeConnectionInfo(info: IConnectionInfo): string {
-    return Buffer.from(JSON.stringify(info, Object.keys(info).sort())).toString('base64');
+    const json = JSON.stringify(info, Object.keys(info).sort());
+    return stringToBase64(json);
 }
 
 export function decodeConnectionInfo(info: string): IConnectionInfo {
-    const decoded = JSON.parse(Buffer.from(info, 'base64').toString('utf8'));
+    const decoded = JSON.parse(base64ToString(info));
     // Ensure the properties are sorted.
     const encoded = encodeConnectionInfo(decoded);
-    return JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+    return JSON.parse(base64ToString(encoded));
 }
 
 export function getDisplayInfo(info: IConnectionInfo): { label: string; description: string } {
@@ -66,4 +67,25 @@ export interface IKustoClient {
     };
     executeQueryV1(db: string, query: string, properties?: ClientRequestProperties): Promise<KustoResponseDataSet>;
     execute(db: string, query: string, properties?: ClientRequestProperties): Promise<KustoResponseDataSet>;
+}
+
+function base64ToString(base64: string): string {
+    if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+        return Buffer.from(base64, 'base64').toString('utf8');
+    } else {
+        return new TextDecoder().decode(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+    }
+}
+
+function stringToBase64(value: string): string {
+    if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+        return Buffer.from(value).toString('base64');
+    } else {
+        // https://developer.mozilla.org/en-US/docs/Glossary/Base64#solution_1_%E2%80%93_escaping_the_string_before_encoding_it
+        return btoa(
+            encodeURIComponent(value).replace(/%([0-9A-F]{2})/g, function (_match, p1) {
+                return String.fromCharCode(Number.parseInt('0x' + p1));
+            })
+        );
+    }
 }
