@@ -103,16 +103,12 @@ export class KernelPerConnection extends Disposable {
         this.notebookController.dispose();
     }
 
-    public executeInteractive(cells: NotebookCell[], textDocument: TextDocument) {
-        cells.forEach((cell) => {
-            this.executeCell(cell, this.notebookController, textDocument);
-        });
+    public async executeInteractive(cells: NotebookCell[], textDocument: TextDocument) {
+        await Promise.all(cells.map((cell) => this.executeCell(cell, this.notebookController, textDocument)));
     }
 
-    public execute(cells: NotebookCell[], _notebook: NotebookDocument, controller: NotebookController) {
-        cells.forEach((cell) => {
-            this.executeCell(cell, controller);
-        });
+    public async execute(cells: NotebookCell[], _notebook: NotebookDocument, controller: NotebookController) {
+        await Promise.all(cells.map((cell) => this.executeCell(cell, controller)));
     }
 
     private async executeCell(
