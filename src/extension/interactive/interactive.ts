@@ -73,7 +73,7 @@ async function executeSelectedQuery(document: TextDocument, start: number, end: 
     // Ensure its visible.
     await commands.executeCommand('interactive.open', undefined, notebook.uri, undefined);
     const cell = await createCell(notebook, document, start, end);
-    controller.executeInteractive([cell], document);
+    await controller.executeInteractive([cell], document);
 }
 
 async function pickConnection(document: TextDocument) {
